@@ -52,4 +52,18 @@ def test4():
         print(f"Acción: {action}, Reward: {reward}, Observation:{obs}\n")
 
 
-test4()
+if __name__ == "__main__":
+    print("Test 1: TwoAZeroObsOneStepEnv")
+    test1()
+    print("--------------------------------------------------")
+
+    print("\nTest 2: TwoARandomObsOneStepEnv")
+    test2()
+    print("--------------------------------------------------")
+
+    print("\nTest 3: LineWorldEasyEnv")
+    test3()
+    print("--------------------------------------------------")
+    
+    print("\nTest 4: LineWorldMirrorEnv")
+    test4()

@@ -35,9 +35,9 @@ class TwoAZeroObsOneStepEnv(gym.Env):
       """Convert internal state to observation format.
 
       Returns
-        int: constant observation 0
+        np array: current observation. Always [0]
       """
-      return 0 # Observación constante 0
+      return np.array([0], dtype=np.float32)
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -75,12 +75,9 @@ class TwoARandomObsOneStepEnv(gym.Env):
         Convert internal state to observation format.
 
         Returns:
-            np.ndarray: current observation [1,0] or [0,1]
+            np.ndarray: current observation 
         """
-        if self.state == 0:
-            return np.array([1, 0], dtype=np.float32)
-        else:
-            return np.array([0, 1], dtype=np.float32)
+        return np.array([self.state], dtype=np.float32)
       
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -111,7 +108,7 @@ class LineWorldEasyEnv(gym.Env):
         self.observation_space = gym.spaces.Box(low=0, high=5, shape=(6,), dtype=np.float32)  # Posiciones posibles: 0, 1, 2, 3, 4, 5
         self.action_space = gym.spaces.Discrete(2) # Dos acciones posibles: 0 (izquierda) y 1 (derecha)
         self.current_step = 0
-        self.position = 0 # Posicion inicial en el extremo izquierdo
+        self.state = 0 # Posicion inicial en el extremo izquierdo
         self.rewards = [0, 1]
 
     # Internal function for current observation.
@@ -119,27 +116,27 @@ class LineWorldEasyEnv(gym.Env):
       """Convert internal state to observation format.
 
       Returns:
-        int: current position (0 to 5)
+        array: current position as a np array [0], [1], ..., [5]
       """
-      return self.position 
+      return np.array([self.state], dtype=np.float32)
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.current_step = 0 # Reiniciamos a step 0 
-        self.position = 0 # volvemos a posicion inicial en el extremo izquierdo
+        self.state = 0 # volvemos a posicion inicial en el extremo izquierdo
         return self._get_obs(), {} # el diccionario es como la info que ponen ellos en el jupiter. Lo tengo que dejar aunq no lo use?
     
     def step(self, action):
         assert self.action_space.contains(action), "Acción inválida"
     
         # Actualizamos la posición según la acción tomada
-        if action == 0 and self.position > 0: # Moverse a la izquierda
-            self.position -= 1
-        elif action == 1 and self.position < 5: # Moverse a la derecha
-            self.position += 1
+        if action == 0 and self.state > 0: # Moverse a la izquierda
+            self.state -= 1
+        elif action == 1 and self.state < 5: # Moverse a la derecha
+            self.state += 1
         
         # Definimos la recompensa según la posición actual
-        if self.position == 5:
+        if self.state == 5:
             reward = self.rewards[1]
             terminated = True
         else:
@@ -171,37 +168,37 @@ class LineWorldMirrorEnv(gym.Env):
         self.observation_space = gym.spaces.Box(low=0, high=3, shape=(4,), dtype=np.float32)  # Posiciones posibles: 0, 1, 2, 3
         self.action_space = gym.spaces.Discrete(2) # Dos acciones posibles: 0 (izquierda) y 1 (derecha)
         self.current_step = 0
-        self.position = 0 # posicion inicial en el extremo izquierdo
+        self.state = 0 # posicion inicial en el extremo izquierdo
 
     # Internal function for current observation.
     def _get_obs(self):
       """Convert internal state to observation format.
 
       Returns:
-        array: current position as one-hot vector [1,0,0,0] to [0,0,0,1]
+        array: current position as np array [0], [1], [2], [3]
       """
-      return np.eye(4)[self.position]
+      return np.array([self.state], dtype=np.float32)
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.current_step = 0 # Reiniciamos a step 0 
-        self.position = 0
+        self.state = 0
         return self._get_obs(), {} 
     
     def step(self, action):
         assert self.action_space.contains(action), "Acción inválida"
     
-        if self.position == 1: # En el estado 1 las acciones están invertidas
+        if self.state == 1: # En el estado 1 las acciones están invertidas
             action = (action + 1) % 2 # (0+1)%2=1 y (1+1)%2=0
 
-        if action == 0 and self.position > 0: # Moverse a la izquierda
-            self.position -= 1
-        elif action == 1 and self.position < 3: # Moverse a la derecha
-            self.position += 1
+        if action == 0 and self.state > 0: # Moverse a la izquierda
+            self.state -= 1
+        elif action == 1 and self.state < 3: # Moverse a la derecha
+            self.state += 1
         
         reward = -1 # Recompensa de -1 por cada paso
         self.current_step += 1
-        terminated = (self.position == 3)
+        terminated = (self.state == 3)
         return self._get_obs(), reward, terminated, False, {}
     
     def close(self):
