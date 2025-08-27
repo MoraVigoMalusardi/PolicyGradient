@@ -20,9 +20,15 @@ class TwoAZeroObsOneStepEnv(gym.Env):
     """
     def __init__(self):
         super().__init__()
-        self.observation_space = gym.spaces.Discrete(1)  # Observación constante 0
+        self.observation_space = gym.spaces.Box(low=0.0, high=0.0, shape=(1,), dtype=int) # Aunque la observación es constante, devolver un vector np.array([0]) es más estándar si después vamos a usar redes neuronales, porque muchas esperan vectores como entrada.
+        """
+        - low (Union[SupportsFloat, np.ndarray]): Lower bounds of the intervals.
+        - high (Union[SupportsFloat, np.ndarray]): Upper bounds of the intervals.
+        - shape (Optional[Sequence[int]]): This only needs to be specified if both low and high are scalars and determines the shape of the space. Otherwise, the shape is inferred from the shape of low or high.
+        - dtype: The dtype of the elements of the space. If this is an integer type, the Box is essentially a discrete space.
+        """
         self.action_space = gym.spaces.Discrete(2) # Dos acciones posibles: 0 y 1
-        self.current_step = 0
+        self.rewards = {0: -1, 1: 1}
 
     # Internal function for current observation.
     def _get_obs(self):
@@ -35,24 +41,16 @@ class TwoAZeroObsOneStepEnv(gym.Env):
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        self.current_step = 0 # Reiniciamos a step 0 
         return self._get_obs(), {} # el diccionario es como la info que ponen ellos en el jupiter. Lo tengo que dejar aunq no lo use?
     
     def step(self, action):
         assert self.action_space.contains(action), "Acción inválida"
         
-        if self.current_step >= 1:# El episodio tiene 1 solo paso, ya que solo se toma una sola accion y con eso termina.
-            raise Exception("El episodio ya ha terminado. Por favor, reinicie el entorno.")
-        
-        # Definimos la recompensa según la acción tomada
-        if action == 1:
-            reward = 1
-        else:
-            reward = -1
-        
+        reward = self.rewards[action]
         self.current_step += 1
-        terminated = self.current_step >= 1 # El episodio termina después de un paso
-        return self._get_obs(), reward, terminated, False, {} # Aca puse truncated en False y de nuevo el dict vacio. Chequear.
+        terminated = True
+
+        return self._get_obs(), reward, terminated, False, {} 
     
 class TwoARandomObsOneStepEnv(gym.Env):
     """
@@ -65,38 +63,31 @@ class TwoARandomObsOneStepEnv(gym.Env):
         super().__init__()
         self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(2,), dtype=int) 
         self.action_space = gym.spaces.Discrete(2) # Dos acciones posibles: 0 y 1
-        self.current_step = 0
+        self.rewards = {0:-1, 1:1}
 
     # Internal function for current observation.
     def _get_obs(self):
-      """Convert internal state to observation format.
+        """
+        Convert internal state to observation format.
 
-      Returns:
-        int: current state (0 or 1)
-      """
-      return self.state # Observación es el estado actual
-    
+        Returns:
+            np.ndarray: current observation [1,0] or [0,1]
+        """
+        if self.state == 0:
+            return np.array([1, 0], dtype=np.float32)
+        else:
+            return np.array([0, 1], dtype=np.float32)
+      
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        self.current_step = 0 # Reiniciamos a step 0 
         self.state = np.random.choice([0, 1]) # Estado inicial aleatorio entre 0 y 1
         return self._get_obs(), {} # el diccionario es como la info que ponen ellos en el jupiter. Lo tengo que dejar aunq no lo use?
     
     def step(self, action):
         assert self.action_space.contains(action), "Acción inválida"
-        
-        if self.current_step >= 1:# El episodio tiene 1 solo paso, ya que solo se toma una sola accion y con eso termina.
-            raise Exception("El episodio ya ha terminado. Por favor, reinicie el entorno.")
-        
-        # Definimos la recompensa segun la acción tomada y el estado inicial
-        if (self.state == 0 and action == 1) or (self.state == 1 and action == 0):
-            reward = 1
-        else:
-            reward = -1
-        
-        self.current_step += 1
-        terminated = self.current_step >= 1 # El episodio termina después de un paso
-        return self._get_obs(), reward, terminated, False, {} # Aca puse truncated en False y de nuevo el dict vacio. Chequear.
+        reward = self.rewards[(self.state+action)%2]
+        terminated = True
+        return self._get_obs(), reward, terminated, False, {}
     
 class LineWorldEasyEnv(gym.Env):
     """
@@ -109,10 +100,11 @@ class LineWorldEasyEnv(gym.Env):
     """
     def __init__(self):
         super().__init__()
-        self.observation_space = gym.spaces.Discrete(6)  # Posiciones posibles: 0, 1, 2, 3, 4, 5
+        self.observation_space = gym.spaces.Box(low=0, high=5, shape=(6,), dtype=np.float32)  # Posiciones posibles: 0, 1, 2, 3, 4, 5
         self.action_space = gym.spaces.Discrete(2) # Dos acciones posibles: 0 (izquierda) y 1 (derecha)
         self.current_step = 0
         self.position = 0 # Posicion inicial en el extremo izquierdo
+        self.rewards = [0, 1]
 
     # Internal function for current observation.
     def _get_obs(self):
@@ -140,12 +132,13 @@ class LineWorldEasyEnv(gym.Env):
         
         # Definimos la recompensa según la posición actual
         if self.position == 5:
-            reward = 1
+            reward = self.rewards[1]
+            terminated = True
         else:
-            reward = 0
+            reward = self.rewards[0]
+            terminated = False
 
         self.current_step += 1
-        terminated = (self.position == 5)
         return self._get_obs(), reward, terminated, False, {}
         
 
@@ -164,7 +157,7 @@ class LineWorldMirrorEnv(gym.Env):
     """
     def __init__(self):
         super().__init__()
-        self.observation_space = gym.spaces.Discrete(4)  # Posiciones posibles: 0, 1, 2, 3
+        self.observation_space = gym.spaces.Box(low=0, high=3, shape=(4,), dtype=np.float32)  # Posiciones posibles: 0, 1, 2, 3
         self.action_space = gym.spaces.Discrete(2) # Dos acciones posibles: 0 (izquierda) y 1 (derecha)
         self.current_step = 0
         self.position = 0 # posicion inicial en el extremo izquierdo
@@ -182,7 +175,7 @@ class LineWorldMirrorEnv(gym.Env):
         super().reset(seed=seed)
         self.current_step = 0 # Reiniciamos a step 0 
         self.position = 0 # volvemos a posicion inicial en el extremo izquierdo
-        return self._get_obs(), {} # el diccionario es como la info que ponen ellos en el jupiter. Lo tengo que dejar aunq no lo use?
+        return self._get_obs(), {} 
     
     def step(self, action):
         assert self.action_space.contains(action), "Acción inválida"
@@ -195,9 +188,7 @@ class LineWorldMirrorEnv(gym.Env):
         elif action == 1 and self.position < 3: # Moverse a la derecha
             self.position += 1
         
-        # Definimos la recompensa según la posición actual
         reward = -1 # Recompensa de -1 por cada paso
-
         self.current_step += 1
         terminated = (self.position == 3)
         return self._get_obs(), reward, terminated, False, {}
