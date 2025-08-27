@@ -47,10 +47,14 @@ class TwoAZeroObsOneStepEnv(gym.Env):
         assert self.action_space.contains(action), "Acción inválida"
         
         reward = self.rewards[action]
-        self.current_step += 1
         terminated = True
 
         return self._get_obs(), reward, terminated, False, {} 
+    
+    def close(self):
+        pass
+
+
     
 class TwoARandomObsOneStepEnv(gym.Env):
     """
@@ -88,6 +92,10 @@ class TwoARandomObsOneStepEnv(gym.Env):
         reward = self.rewards[(self.state+action)%2]
         terminated = True
         return self._get_obs(), reward, terminated, False, {}
+
+    def close(self):
+        pass
+
     
 class LineWorldEasyEnv(gym.Env):
     """
@@ -140,6 +148,9 @@ class LineWorldEasyEnv(gym.Env):
 
         self.current_step += 1
         return self._get_obs(), reward, terminated, False, {}
+
+    def close(self):
+        pass
         
 
 class LineWorldMirrorEnv(gym.Env):
@@ -167,23 +178,23 @@ class LineWorldMirrorEnv(gym.Env):
       """Convert internal state to observation format.
 
       Returns:
-        int: current position (0 to 3)
+        array: current position as one-hot vector [1,0,0,0] to [0,0,0,1]
       """
-      return self.position 
+      return np.eye(4)[self.position]
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.current_step = 0 # Reiniciamos a step 0 
-        self.position = 0 # volvemos a posicion inicial en el extremo izquierdo
+        self.position = 0
         return self._get_obs(), {} 
     
     def step(self, action):
         assert self.action_space.contains(action), "Acción inválida"
     
-        # Actualizamos la posición según la acción tomada
         if self.position == 1: # En el estado 1 las acciones están invertidas
             action = (action + 1) % 2 # (0+1)%2=1 y (1+1)%2=0
-        elif action == 0 and self.position > 0: # Moverse a la izquierda
+
+        if action == 0 and self.position > 0: # Moverse a la izquierda
             self.position -= 1
         elif action == 1 and self.position < 3: # Moverse a la derecha
             self.position += 1
@@ -192,3 +203,6 @@ class LineWorldMirrorEnv(gym.Env):
         self.current_step += 1
         terminated = (self.position == 3)
         return self._get_obs(), reward, terminated, False, {}
+    
+    def close(self):
+        pass
