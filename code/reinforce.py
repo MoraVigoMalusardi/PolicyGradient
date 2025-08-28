@@ -65,25 +65,34 @@ def train_policy(
     optimizer: optim.Optimizer,
     episodes: int = 150,
     gamma: float = 0.99,
+    batch_size: int = 1,
 ):
     for episode in range(episodes):
-        obs_buf, act_buf, rew_buf = [], [], []
-        s, _ = env.reset()
-        terminated, truncated = False, False
-        # Generar una trayectoria
-        while not (terminated or truncated):
-            obs_buf.append(s)
-            s_t = torch.tensor(s, dtype=torch.float32)
-            dist = get_policy(policy_net, s_t)  # π_θ(a_t | s_t)
-            a = dist.sample()      # a_t ~ π_θ(a_t | s_t)
-            s, r, terminated, truncated, _ = env.step(a.item()) # Ejecuta a_t y transiciona de estado
-            act_buf.append(a.item())
-            rew_buf.append(r)
+        batch_obs, batch_acts, batch_returns = [], [], []
+
+        # Recolectamos N trayectorias
+        for _ in range(batch_size):
+            obs_buf, act_buf, rew_buf = [], [], []
+            s, _ = env.reset()
+            terminated, truncated = False, False
+            # Generar una trayectoria
+            while not (terminated or truncated):
+                obs_buf.append(s)
+                s_t = torch.tensor(s, dtype=torch.float32)
+                dist = get_policy(policy_net, s_t)  # π_θ(a_t | s_t)
+                a = dist.sample()      # a_t ~ π_θ(a_t | s_t)
+                s, r, terminated, truncated, _ = env.step(a.item()) # Ejecuta a_t y transiciona de estado
+                act_buf.append(a.item())
+                rew_buf.append(r)
+
+            batch_obs.extend(obs_buf)
+            batch_acts.extend(act_buf)
+            batch_returns.extend(compute_returns(rew_buf, gamma))  
 
         # Preparar tensores
-        obs = torch.tensor(obs_buf, dtype=torch.float32)
-        acts = torch.tensor(act_buf, dtype=torch.int64)
-        returns = compute_returns(rew_buf, gamma)
+        obs = torch.tensor(batch_obs, dtype=torch.float32)
+        acts = torch.tensor(batch_acts, dtype=torch.int64)
+        returns = torch.tensor(batch_returns, dtype=torch.float32)
 
         # Calcular pérdida y actualizar parámetros
         loss = compute_loss(policy_net, obs, acts, returns)
@@ -121,7 +130,7 @@ def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
     policy_net = build_mlp([state_dim, 16, action_dim])
     optimizer = optim.Adam(policy_net.parameters(), lr=lr)
 
-    train_policy(env, policy_net, optimizer, episodes=episodes, gamma=gamma)
+    train_policy(env, policy_net, optimizer, episodes=episodes, gamma=gamma, batch_size=5)
 
     print("\nEntrenamiento completado. Probando la política aprendida...\n")
 
