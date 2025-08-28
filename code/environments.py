@@ -16,7 +16,7 @@ class TwoAZeroObsOneStepEnv(gym.Env):
     Acciones: dos posibles 
     Recompensa: +1 o -1, depende únicamente de la acción tomada, hay una acción “buena” 
     y una “mala” 
-    1 
+
     """
     def __init__(self):
         super().__init__()
