@@ -77,7 +77,7 @@ class TwoARandomObsOneStepEnv(gym.Env):
         Returns:
             np.ndarray: current observation 
         """
-        return np.array([self.state], dtype=np.float32)
+        return np.array(np.eye(2)[self.state], dtype=np.float32) 
       
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -116,9 +116,9 @@ class LineWorldEasyEnv(gym.Env):
       """Convert internal state to observation format.
 
       Returns:
-        array: current position as a np array [0], [1], ..., [5]
+        array: current observation, one-hot encoded position
       """
-      return np.array([self.state], dtype=np.float32)
+      return np.array(np.eye(2)[self.state], dtype=np.float32)
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -175,9 +175,9 @@ class LineWorldMirrorEnv(gym.Env):
       """Convert internal state to observation format.
 
       Returns:
-        array: current position as np array [0], [1], [2], [3]
+        array: current position as a np array [1,0,0,0], [0,1,0,0], ..., [0,0,0,1]
       """
-      return np.array([self.state], dtype=np.float32)
+      return np.array(np.eye(2)[self.state], dtype=np.float32)
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)

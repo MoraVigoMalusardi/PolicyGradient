@@ -3,7 +3,7 @@ import numpy as np
 from torch import nn
 from typing import List
 import torch.optim as optim
-from environments import TwoAZeroObsOneStepEnv
+from environments import TwoAZeroObsOneStepEnv, TwoARandomObsOneStepEnv, LineWorldEasyEnv, LineWorldMirrorEnv
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
@@ -67,6 +67,7 @@ def train_policy(
     gamma: float = 0.99,
     batch_size: int = 1,
 ):
+    losses = []
     for episode in range(episodes):
         batch_obs, batch_acts, batch_returns = [], [], []
 
@@ -78,7 +79,7 @@ def train_policy(
             # Generar una trayectoria
             while not (terminated or truncated):
                 obs_buf.append(s)
-                s_t = torch.tensor(s, dtype=torch.float32)
+                s_t = torch.tensor(s, dtype=torch.float32).unsqueeze(0) 
                 dist = get_policy(policy_net, s_t)  # π_θ(a_t | s_t)
                 a = dist.sample()      # a_t ~ π_θ(a_t | s_t)
                 s, r, terminated, truncated, _ = env.step(a.item()) # Ejecuta a_t y transiciona de estado
@@ -96,6 +97,7 @@ def train_policy(
 
         # Calcular pérdida y actualizar parámetros
         loss = compute_loss(policy_net, obs, acts, returns)
+        losses.append(loss.item())
         optimizer.zero_grad() # pone a cero los gradientes de todos los parámetros asociados a ese optimizador.
         loss.backward()       # Calcula los gradientes de la función de pérdida con respecto a los parámetros de la red neuronal.
         optimizer.step()      # actualiza los parametros de la red utilizando los gradientes calculados por loss.backward()
@@ -104,6 +106,7 @@ def train_policy(
             print(f"Episodio {episode+1}, Recompensa total: {sum(rew_buf)}")
 
     env.close()
+    return losses
 
 def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
     """
@@ -116,7 +119,9 @@ def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
     # --------------------- ENTORNOS ---------------------
     envs = {
         "TwoAZeroObsOneStep": TwoAZeroObsOneStepEnv,
-        # Agregar otros entornos desps
+        "TwoARandomObsOneStepEnv": TwoARandomObsOneStepEnv,
+        "LineWorldEasyEnv": LineWorldEasyEnv,
+        "LineWorldMirrorEnv": LineWorldMirrorEnv,
     }
 
     # ---------------- ENTRENAMIENTO ----------------
@@ -130,7 +135,15 @@ def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
     policy_net = build_mlp([state_dim, 16, action_dim])
     optimizer = optim.Adam(policy_net.parameters(), lr=lr)
 
-    train_policy(env, policy_net, optimizer, episodes=episodes, gamma=gamma, batch_size=5)
+    train_losses = train_policy(env, policy_net, optimizer, episodes=episodes, gamma=gamma, batch_size=5)
+
+    # Graficar la curva de loss
+    plt.figure()
+    plt.plot(train_losses)
+    plt.xlabel("Episodio")
+    plt.ylabel("Pérdida")
+    plt.title(f"Curva de pérdida por episodio en {environment_name}")
+    plt.show()
 
     print("\nEntrenamiento completado. Probando la política aprendida...\n")
 
@@ -143,12 +156,17 @@ def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
     probs = F.softmax(logits, dim=-1).detach().numpy().flatten()  # shape: (action_dim,)
 
     plt.bar(range(len(probs)), probs)
-    plt.xlabel("Acciones")
     plt.ylabel("Probabilidad")
-    plt.title("Probabilidades de cada accion según la política aprendida")
+    plt.xlabel("Acciones")
+    plt.xticks(range(len(probs)))  
+    plt.title(f"Probabilidades de cada accion en {environment_name}")
     plt.show()
+
 
 
 if __name__ == "__main__":
     # Entrenar y probar en TwoAZeroObsOneStepEnv
-    train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]))
+    #train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]))
+
+    # Entrenar y probar en TwoARandomObsOneStepEnv
+    train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]))
