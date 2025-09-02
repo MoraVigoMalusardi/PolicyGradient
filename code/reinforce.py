@@ -6,6 +6,8 @@ import torch.optim as optim
 from environments import TwoAZeroObsOneStepEnv, TwoARandomObsOneStepEnv, LineWorldEasyEnv, LineWorldMirrorEnv
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+import gymnasium as gym
+import utils
 
 
 def build_mlp(
@@ -68,8 +70,11 @@ def train_policy(
     batch_size: int = 1,
 ):
     losses = []
+    rewards_per_episode = [] 
+
     for episode in range(episodes):
         batch_obs, batch_acts, batch_returns = [], [], []
+        total_reward = 0 
 
         # Recolectamos N trayectorias
         for _ in range(batch_size):
@@ -85,13 +90,15 @@ def train_policy(
                 s, r, terminated, truncated, _ = env.step(a.item()) # Ejecuta a_t y transiciona de estado
                 act_buf.append(a.item())
                 rew_buf.append(r)
+                total_reward += r   # Es mejor tomar las recompensas descontadas no?
 
             batch_obs.extend(obs_buf)
             batch_acts.extend(act_buf)
-            batch_returns.extend(compute_returns(rew_buf, gamma))  
+            discounted_returns = compute_returns(rew_buf, gamma)
+            batch_returns.extend(discounted_returns)  
 
         # Preparar tensores
-        obs = torch.tensor(batch_obs, dtype=torch.float32)
+        obs = torch.tensor(np.array(batch_obs), dtype=torch.float32)
         acts = torch.tensor(batch_acts, dtype=torch.int64)
         returns = torch.tensor(batch_returns, dtype=torch.float32)
 
@@ -101,12 +108,13 @@ def train_policy(
         optimizer.zero_grad() # pone a cero los gradientes de todos los parámetros asociados a ese optimizador.
         loss.backward()       # Calcula los gradientes de la función de pérdida con respecto a los parámetros de la red neuronal.
         optimizer.step()      # actualiza los parametros de la red utilizando los gradientes calculados por loss.backward()
+        rewards_per_episode.append(total_reward) 
 
         if (episode + 1) % 5  == 0:
             print(f"Episodio {episode+1}, Recompensa total: {sum(rew_buf)}")
 
     env.close()
-    return losses
+    return losses, rewards_per_episode
 
 def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
     """
@@ -122,28 +130,22 @@ def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
         "TwoARandomObsOneStepEnv": TwoARandomObsOneStepEnv,
         "LineWorldEasyEnv": LineWorldEasyEnv,
         "LineWorldMirrorEnv": LineWorldMirrorEnv,
+        "CartPole-v1" : lambda: gym.make("CartPole-v1"),
+        "Acrobot-v1": lambda: gym.make("Acrobot-v1")
     }
 
     # ---------------- ENTRENAMIENTO ----------------
     env = envs[environment_name]()
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
-    gamma = 0.0  # cómo descuenta las recompensas futuras
+    gamma = 0.99 
     lr = 0.01     # learning rate
 
     # Red de política
     policy_net = build_mlp([state_dim, 16, action_dim])
     optimizer = optim.Adam(policy_net.parameters(), lr=lr)
 
-    train_losses = train_policy(env, policy_net, optimizer, episodes=episodes, gamma=gamma, batch_size=5)
-
-    # Graficar la curva de loss
-    plt.figure()
-    plt.plot(train_losses)
-    plt.xlabel("Episodio")
-    plt.ylabel("Pérdida")
-    plt.title(f"Curva de pérdida por episodio en {environment_name}")
-    plt.show()
+    train_losses, rewards_per_episode = train_policy(env, policy_net, optimizer, episodes=episodes, gamma=gamma, batch_size=5)
 
     print("\nEntrenamiento completado. Probando la política aprendida...\n")
 
@@ -155,18 +157,75 @@ def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
     # Softmax para convertir logits en probabilidades
     probs = F.softmax(logits, dim=-1).detach().numpy().flatten()  # shape: (action_dim,)
 
-    plt.bar(range(len(probs)), probs)
-    plt.ylabel("Probabilidad")
-    plt.xlabel("Acciones")
-    plt.xticks(range(len(probs)))  
-    plt.title(f"Probabilidades de cada accion en {environment_name}")
-    plt.show()
+    # --------------------- GRÁFICOS ---------------------
+    utils.plot_action_probs(probs, environment_name)
+    utils.plot_loss_curve(train_losses, environment_name)
+    utils.plot_rewards(rewards_per_episode, environment_name)
+
+    # --------------------- SIMULACIÓN ---------------------
+    # if "CartPole" in environment_name:
+    #     env = gym.make("CartPole-v1", render_mode="human") 
+    #     simulate_policy(env, policy_net, episodes=3, render=True, sleep_time=0.5)
+
+    # if "Acrobot" in environment_name:
+    #     env = gym.make("Acrobot-v1", render_mode="human") 
+    #     simulate_policy(env, policy_net, episodes=3, render=True, sleep_time=0.5)
+
+
+
+import time
+
+def simulate_policy(env, policy_net, episodes: int = 5, render: bool = True, sleep_time: float = 1):
+    """
+    Simula la política aprendida en el entorno.
+    Args:
+        env: entorno de gymnasium ya creado
+        policy_net: red entrenada
+        episodes (int): cantidad de episodios de simulación
+        render (bool): si True, muestra animación con render()
+        sleep_time (float): tiempo entre frames
+    """
+    for ep in range(episodes):
+        obs, _ = env.reset()
+        done, truncated = False, False
+        total_reward = 0
+
+        while not (done or truncated):
+            if render:
+                env.render()
+                time.sleep(sleep_time)
+
+            s_t = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
+            with torch.no_grad():
+                dist = get_policy(policy_net, s_t)
+                action = dist.probs.argmax().item()  # acción más probable
+
+            obs, reward, done, truncated, _ = env.step(action)
+            total_reward += reward
+            time.sleep(sleep_time)
+
+        print(f"Episodio {ep+1}: recompensa total = {total_reward}")
+
+
+    env.close()
 
 
 
 if __name__ == "__main__":
     # Entrenar y probar en TwoAZeroObsOneStepEnv
-    #train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]))
+    # train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]))
 
     # Entrenar y probar en TwoARandomObsOneStepEnv
-    train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]))
+    # train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]))
+
+    # Entrenar y probar en LineWorldEasyEnv
+    # train_and_test_env("LineWorldEasyEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+
+    # Entrenar y probar en LineWorldMirrorEnv
+    # train_and_test_env("LineWorldMirrorEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0]))
+
+    # Entrenar y probar en CartPole-v1
+    train_and_test_env("CartPole-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0]))
+
+    # Entrenar y probar en Acrobot-v1
+    # train_and_test_env("Acrobot-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))

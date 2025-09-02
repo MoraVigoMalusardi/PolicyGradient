@@ -118,7 +118,7 @@ class LineWorldEasyEnv(gym.Env):
       Returns:
         array: current observation, one-hot encoded position
       """
-      return np.array(np.eye(2)[self.state], dtype=np.float32)
+      return np.array(np.eye(6)[self.state], dtype=np.float32)
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -177,7 +177,7 @@ class LineWorldMirrorEnv(gym.Env):
       Returns:
         array: current position as a np array [1,0,0,0], [0,1,0,0], ..., [0,0,0,1]
       """
-      return np.array(np.eye(2)[self.state], dtype=np.float32)
+      return np.array(np.eye(4)[self.state], dtype=np.float32)
     
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
