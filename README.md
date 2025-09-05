@@ -77,3 +77,30 @@ En este entorno hay 4 estados consecutivos.
     - Truncation: La longitud del episodio es mayor a 500
 - Reward: -1 por paso, llegar al estado terminal: 0.
 
+### Implementacion del algoritmo REINFORCE
+
+Se implementa el algoritmo REINFORCE basandose en el capítulo 13.3 del libro de Sutton y Barto. 
+ 
+- La política es representada por una red neuronal.
+- La red de valor (baseline) también es representada por una red neuronal.
+
+#### Entrenamiento:
+- Se itera sobre M episodios.
+- En cada episodio:
+    - Se generan N trayectorias (N = batch_size). En cada una se sigue la política actual hasta que el episodio termina. En el proceso se almacenan las observaciones, acciones y recompensas.
+    - Se calcula el retorno descontado para cada paso en cada trayectoria.
+    - Si se usa baseline, se calcula el valor de cada estado visitado usando la red de valor. Con eso se calcula la ventaja (advantage) como la diferencia entre el reward y el valor estimado.
+
+- ##### Funcion de costo:
+    - Sin baseline:
+        - $J(\theta) = \frac{1}{N} \sum_{i=1}^{N} \sum_{t=0}^{T_i} G_t^{(i)} \log \pi_\theta (A_t^{(i)} | S_t^{(i)})$
+
+        donde $G_t^{(i)}$ es el retorno descontado desde el paso t en la trayectoria i.
+    - Con baseline:
+        - $J(\theta) = \frac{1}{N} \sum_{i=1}^{N} \sum_{t=0}^{T_i} A_t^{(i)} \log \pi_\theta (A_t^{(i)} | S_t^{(i)})$
+
+        donde $A_t^{(i)} = G_t^{(i)} - V_\phi (S_t^{(i)})$ es la ventaja en el paso t de la trayectoria i.
+    
+- Se actualizan los parametros de la politica (y de la funcion de valor si se usa baseline).
+
+
