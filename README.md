@@ -103,4 +103,32 @@ Se implementa el algoritmo REINFORCE basandose en el capítulo 13.3 del libro de
     
 - Se actualizan los parametros de la politica (y de la funcion de valor si se usa baseline).
 
+- ##### Criterios de convergencia para Early Stop:
+Use diferentes criterios segun el entorno:
+    - TwoAZeroObsOneStep (1 paso)
+        - metric= "avg_return", threshold=0.99, window=50, mode="ge"
+        - Justificacion: el pptimo es +1 de manera determinista; pedir ≥0.99 asegura que casi siempre se elige la accion correcta.
+        
+    - TwoARandomObsOneStepEnv (1 paso con estado incial aleatorio)
+        - metric = "avg_return", threshold=0.99, window=50, mode="ge"
+        - Justificacion: tambien optimo +1 si la politica condiciona bien en el estado; el aleatorio promedia ≈0
+
+    - LineWorldEasyEnv
+        - metric = "avg_steps", threshold=5.5, window=50, mode="le"
+        - Justificacion: el retorno no descontado da 1 cuando eventualmente se llega y no distingue calidad (en cuanto llego) por eso mido eficiencia en pasos. Optimo: 5 pasos.
+
+    - LineWorldMirrorEnv
+        - metric= "avg_steps", threshold=3.5, window=50, mode="le"
+        - Justificacion: recompensa −1 por paso. Por lo que retorno = −#pasos; medir pasos es directo. Optimo: 3 pasos.
+
+    - CartPole-v1
+        - metric="avg_return", threshold=450.0, window=50, mode="ge"
+        - Justificacion: el maximo es 500.
+
+    - Acrobot-v1
+        - metric="avg_return", threshold=-100.0, window=50, mode="ge"
+        - Justificacion: la recompensa es −1 por paso hasta alcanzar la meta. En: https://gymnasium.farama.org/environments/classic_control/acrobot/ se menciona "The reward threshold is -100", este caso me resulto menos intuitivo de definir por mi cuenta. 
+    
+            
+
 
