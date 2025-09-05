@@ -1,8 +1,26 @@
+from environments import (
+    TwoAZeroObsOneStepEnv,
+    TwoARandomObsOneStepEnv,
+    LineWorldEasyEnv,
+    LineWorldMirrorEnv
+)
+import gymnasium as gym
+
+# --------------------- ENTORNOS ---------------------
+envs = {
+        "TwoAZeroObsOneStep": TwoAZeroObsOneStepEnv,
+        "TwoARandomObsOneStepEnv": TwoARandomObsOneStepEnv,
+        "LineWorldEasyEnv": LineWorldEasyEnv,
+        "LineWorldMirrorEnv": LineWorldMirrorEnv,
+        "CartPole-v1" : lambda: gym.make("CartPole-v1"),
+        "Acrobot-v1": lambda: gym.make("Acrobot-v1")
+    }
+
+
 # ----------------- UTILS PARA GRAFICOS -----------------
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 
 def plot_loss_curve(train_losses, environment_name: str):
     """Genera y guarda la curva de perdida por episodio."""
@@ -41,6 +59,44 @@ def plot_rewards(rewards_per_episode, environment_name: str, avg_random: float =
     plt.legend()
     plt.savefig(f"plots/rewards/rewards_{environment_name}.png")
     plt.close()
+
+def random_policy(obs, env):
+    return env.action_space.sample()
+
+def calculate_return(env, policy_fn):
+    """Ejecuta 1 episodio con la política dada y devuelve el retorno no descontado."""
+    obs, _ = env.reset()
+    done = truncated = False
+    total = 0.0
+    while not (done or truncated):
+        a = policy_fn(obs, env)
+        obs, r, done, truncated, _ = env.step(a)
+        total += r
+    return float(total)
+
+
+def evaluate_policy_mean(env_name, episodes: int = 200, policy_fn = random_policy):
+    """Promedia el retorno no descontado de una politica dada."""
+    env = envs[env_name]()
+    rets = []
+    for _ in range(episodes):
+        try:
+            rets.append(calculate_return(env, policy_fn))
+        finally:
+            env.close()
+    return float(np.mean(rets))
+
+
+def reference_lines(env_name, episodes: int = 200) -> dict:
+    """
+    Devuelve lineas de referencia:
+      - 'random': agente aleatorio
+      - 'always_0', 'always_1', ...: agentes triviales que siempre toman la misma accion
+    """
+    env = envs[env_name]()
+    refs = {}
+    refs["random"] = evaluate_policy_mean(env_name, episodes=episodes, policy_fn=random_policy)
+    return refs
 
 
 def moving_average(x, w):

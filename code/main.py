@@ -53,7 +53,7 @@ def train_and_test_env(environment_name: str,
     else:
         early_stop_cfg = None
 
-    train_losses, value_losses, rewards_per_episode = train_policy(env, policy_net, value_net, policy_optimizer, value_opt, episodes=episodes, gamma=gamma, batch_size=10, use_baseline=True, normalize_advantages=True, early_stop_cfg=early_stop_cfg)
+    train_losses, value_losses, rewards_per_episode = train_policy(env, policy_net, value_net, policy_optimizer, value_opt, episodes=episodes, gamma=gamma, batch_size=batch_size, use_baseline=True, normalize_advantages=True, early_stop_cfg=early_stop_cfg)
 
     print("\nEntrenamiento completado. Probando la política aprendida...\n")
 
@@ -62,11 +62,16 @@ def train_and_test_env(environment_name: str,
     logits = policy_net(obs)                                      # Hacemos forward pass para obtener los logits
     probs = F.softmax(logits, dim=-1).detach().numpy().flatten()  # Softmax para convertir logits en probabilidades
 
+
     # --------------------- GRÁFICOS ---------------------
+
+    refs = utils.reference_lines(environment_name, episodes)
+    avg_random = refs["random"]                                   # promedio de recompensa del agente aleatorio
+
     #utils.plot_action_probs(probs, environment_name)
     utils.plot_loss_curve(train_losses, environment_name)
     utils.plot_loss_curve(value_losses, environment_name + " (value loss)")
-    utils.plot_rewards(rewards_per_episode, environment_name)
+    utils.plot_rewards(rewards_per_episode, environment_name, avg_random=avg_random)
 
     # --------------------- SIMULACIÓN ---------------------
     # if "CartPole" in environment_name:
@@ -182,19 +187,19 @@ if __name__ == "__main__":
     # train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]), batch_size=10, early_stop=False)
 
     # Entrenar y probar en TwoARandomObsOneStepEnv
-    # train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]), batch_size=10, early_stop=True)
+    # train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]), batch_size=10, early_stop=False)
 
     # Entrenar y probar en LineWorldEasyEnv
-    # train_and_test_env("LineWorldEasyEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=True)
+    # train_and_test_env("LineWorldEasyEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
     # Entrenar y probar en LineWorldMirrorEnv
-    # train_and_test_env("LineWorldMirrorEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=True)
+    # train_and_test_env("LineWorldMirrorEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
     # Entrenar y probar en CartPole-v1
-    # train_and_test_env("CartPole-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=True)
+    # train_and_test_env("CartPole-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
     # Entrenar y probar en Acrobot-v1
-    # train_and_test_env("Acrobot-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=True )
+    train_and_test_env("Acrobot-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
     #compare_and_plot("CartPole-v1", episodes=500, batch_size=10, seeds=(0,1,2,3,4))
     # compare_and_plot("Acrobot-v1", episodes=500, batch_size=10, seeds=[0, 1, 2])
