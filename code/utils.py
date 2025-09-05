@@ -11,7 +11,7 @@ def plot_loss_curve(train_losses, environment_name: str):
     plt.plot(train_losses)
     plt.xlabel("Episodio")
     plt.ylabel("Perdida")
-    plt.title(f"Curva de perdida por episodio en {environment_name}")
+    plt.title(f"Perdida por ep. -{environment_name}- Early Stop")
     plt.savefig(f"plots/losses/loss_curve_{environment_name}.png")
     plt.close()
 
@@ -37,7 +37,7 @@ def plot_rewards(rewards_per_episode, environment_name: str, avg_random: float =
         plt.axhline(y=avg_random, color="red", linestyle="--", label="Agente aleatorio")
     plt.xlabel("Episodio")
     plt.ylabel("Recompensa")
-    plt.title(f"Recompensa promedio por episodio en {environment_name}")
+    plt.title(f"Recompensa promedio por episodio en {environment_name} - Early Stop")
     plt.legend()
     plt.savefig(f"plots/rewards/rewards_{environment_name}.png")
     plt.close()
@@ -49,7 +49,7 @@ def moving_average(x, w):
     Para cada punto i, reemplaza x[i] por el promedio de los w puntos 
     anteriores (incluyendo el valor de x[i])
     """
-    
+
     w = min(w, len(x))
     return np.convolve(x, np.ones(w)/w, mode="valid") if len(x) else np.array([])
 
@@ -122,7 +122,68 @@ def plot_two_curves(curve_A, curve_B, title, label_A, label_B, x_label, y_label,
     plt.savefig(out_path)
     plt.close()
 
+# ------------------ UTILS PARA CONVERGENCIA ------------------
+# Criterios de convergencia para cada uno de los entornos
+"""
+    - threshold: valor umbral de recompensa promedio 
+    - window: cantidad de episodios sobre los que promediar
+    - mode: criterio de comparacion. ejemplo: "ge" (greater or equal) 
 
+"""
+CONVERGENCE = {
+    # -------- GYM --------
+    "CartPole-v1": {
+        "env_name": "CartPole-v1", "metric": "avg_return", "threshold": 450.0, "window": 50, "mode": "ge"
+    },  
+    "Acrobot-v1":  {
+        "env_name": "Acrobot-v1", "metric": "avg_return", "threshold": -100.0, "window": 50, "mode": "ge"
+    },  
+
+    # -------- CUSTOM --------
+    # 1 paso; optimo = +1 siempre. Converge cuando el promedio se acerca a +1
+    "TwoAZeroObsOneStep": {
+        "env_name": "TwoAZeroObsOneStep", "metric": "avg_return", "threshold": 0.99, "window": 50, "mode": "ge"
+    },
+
+    # 1 paso; optimo = +1 si elige la accion correcta segun el estado
+    "TwoARandomObsOneStepEnv": {
+        "env_name": "TwoARandomObsOneStepEnv", "metric": "avg_return", "threshold": 0.99, "window": 50, "mode": "ge"
+    },
+
+    # Recompensa no descontada es siempre 1 si eventualmente llega, asi que NO sirve avg_return.
+    # Medimos eficiencia: pasos por episodio (menos pasos es mejor). Optimo = 5 pasos (llega al estado 5).
+    "LineWorldEasyEnv": {
+        "env_name": "LineWorldEasyEnv", "metric": "avg_steps",  "threshold": 5.5, "window": 50, "mode": "le"
+    },
+
+    # Recompensa = -1 por paso, retorno = -#pasos. Optimo = -3 (llega en 3 pasos)
+    # Medir pasos o return es parecido creo
+    "LineWorldMirrorEnv": {
+        "env_name": "LineWorldMirrorEnv", "metric": "avg_steps", "threshold": 3.5, "window": 50, "mode": "le"
+    },
+}
+
+
+def meets(threshold, value, mode):
+    """ Verifica si value cumple el criterio respecto al threshold segun mode"""
+    return (mode == "ge" and value >= threshold) or (mode == "le" and value <= threshold)
+
+
+def check_convergence(env_name, cfg, episode_returns, episode_steps):
+    metric = cfg.get("metric")
+    data = {
+        "avg_return":        episode_returns,
+        "avg_steps":         episode_steps,
+    }[metric]                                      # Me quedo con el que corresponde a metric
+
+    ma = moving_average(np.array(data, dtype=float), cfg["window"])
+    if len(ma) == 0: 
+        return False
+    last = ma[-1]
+    if cfg["mode"] == "ge":
+        return last >= cfg["threshold"]
+    else:
+        return last <= cfg["threshold"]
 
 # ----------------- UTILS PARA SIMULACIÓN -----------------
 import time

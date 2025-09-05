@@ -4,6 +4,8 @@ from torch import nn
 from typing import List
 import torch.optim as optim
 import torch.nn.functional as F
+import utils 
+
 
 def build_mlp(
     layer_sizes: List[int],
@@ -76,7 +78,8 @@ def train_policy(
     gamma: float = 0.99,
     batch_size: int = 1,
     normalize_advantages: bool = True,
-    use_baseline: bool = True
+    use_baseline: bool = True,
+    early_stop_cfg: dict = None
 ):
     """
     Entrena la poltica usando el algoritmo REINFORCE. Puede o no usar baseline.
@@ -91,9 +94,12 @@ def train_policy(
         batch_size (int): cantidad de trayectorias por episodio, antes de actualizar la politica
         normalize_advantages (bool): si True, normaliza las ventajas a media 0 y varianza 1
         use_baseline (bool): si True, usa baseline (red de value funtion)
+        early_stop_cfg (dict): diccionaio con los parametros para early stop
     """
     policy_losses, value_losses = [], []
     avg_rewards_per_episode = [] 
+    rewards_per_trayectory = []  # para criterio de convergencia
+    episode_steps   = []         # para criterio de convergencia
 
     for episode in range(episodes):
         batch_obs, batch_acts, batch_returns = [], [], []
@@ -113,8 +119,10 @@ def train_policy(
                 s, r, terminated, truncated, _ = env.step(a.item()) # Ejecuta a_t y transiciona de estado
                 act_buf.append(a.item())
                 rew_buf.append(r)
-                total_reward += r   # Es mejor tomar las recompensas descontadas no?
+                total_reward += r 
 
+            rewards_per_trayectory.append(float(sum(rew_buf)))      # rewards de esta trayectoria
+            episode_steps.append(len(rew_buf))                      # cantidad de pasos de esta trayectoria
             discounted_returns = compute_returns(rew_buf, gamma)
             batch_obs.extend(obs_buf)
             batch_acts.extend(act_buf)
@@ -154,6 +162,13 @@ def train_policy(
         value_losses.append(value_loss.item())
         avg_rewards_per_episode.append(total_reward/batch_size)              # promedio por trayectoria
 
+        # -------- EARLY STOP por convergencia --------
+        if early_stop_cfg:
+            converged = utils.check_convergence(early_stop_cfg["env_name"], early_stop_cfg, rewards_per_trayectory, episode_steps)
+            if converged:
+                print(f"** Convergencia alcanzada en el episodio {episode+1} **")
+                break
+            
         if (episode + 1) % 5  == 0:
             print(f"Episodio {episode+1} | Recompensa total: {total_reward} | "
                   f"Policy Loss={policy_losses[-1]:.3f} | ValueF Loss={value_losses[-1]:.3f}")

@@ -6,14 +6,21 @@ import torch.nn.functional as F
 import gymnasium as gym
 import utils
 from reinforce import build_mlp, train_policy
+from utils import CONVERGENCE
 
-def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
+def train_and_test_env(environment_name: str, 
+                       episodes: int, 
+                       obs: np.ndarray, 
+                       batch_size: int, 
+                       early_stop: bool = False):
     """
     Entrena una política en el entorno especificado y luego prueba la política aprendida.
     Args:
         environment_name (str): Nombre del entorno a entrenar.
-        episodes (int): Número de episodios para entrenar.
+        episodes (int): Número de episodios para entrenar.S
         obs (np.ndarray): Observación inicial para probar la política aprendida.
+        batch_size (int): Tamaño del batch (numero de trayectorias antes de actualizar la política).
+        early_stop (bool): Si True, usa criterio de convergencia para detener el entrenamiento.
     """
     # --------------------- ENTORNOS ---------------------
     envs = {
@@ -41,7 +48,12 @@ def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
     policy_optimizer = optim.Adam(policy_net.parameters(), lr=lr_policy)
     value_opt = optim.Adam(value_net.parameters(), lr=lr_value)
 
-    train_losses, value_losses, rewards_per_episode = train_policy(env, policy_net, value_net, policy_optimizer, value_opt, episodes=episodes, gamma=gamma, batch_size=5)
+    if early_stop:
+        early_stop_cfg = {**CONVERGENCE[environment_name]}
+    else:
+        early_stop_cfg = None
+
+    train_losses, value_losses, rewards_per_episode = train_policy(env, policy_net, value_net, policy_optimizer, value_opt, episodes=episodes, gamma=gamma, batch_size=10, use_baseline=True, normalize_advantages=True, early_stop_cfg=early_stop_cfg)
 
     print("\nEntrenamiento completado. Probando la política aprendida...\n")
 
@@ -51,7 +63,7 @@ def train_and_test_env(environment_name: str, episodes: int, obs: np.ndarray):
     probs = F.softmax(logits, dim=-1).detach().numpy().flatten()  # Softmax para convertir logits en probabilidades
 
     # --------------------- GRÁFICOS ---------------------
-    utils.plot_action_probs(probs, environment_name)
+    #utils.plot_action_probs(probs, environment_name)
     utils.plot_loss_curve(train_losses, environment_name)
     utils.plot_loss_curve(value_losses, environment_name + " (value loss)")
     utils.plot_rewards(rewards_per_episode, environment_name)
@@ -167,22 +179,22 @@ def compare_and_plot(env_name, episodes=500, batch_size=10, seeds=(0,1,2,3,4)):
 
 if __name__ == "__main__":
     # Entrenar y probar en TwoAZeroObsOneStepEnv
-    # train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]))
+    # train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]), batch_size=10, early_stop=False)
 
     # Entrenar y probar en TwoARandomObsOneStepEnv
-    # train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]))
+    # train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]), batch_size=10, early_stop=True)
 
     # Entrenar y probar en LineWorldEasyEnv
-    # train_and_test_env("LineWorldEasyEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+    # train_and_test_env("LineWorldEasyEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=True)
 
     # Entrenar y probar en LineWorldMirrorEnv
-    # train_and_test_env("LineWorldMirrorEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0]))
+    # train_and_test_env("LineWorldMirrorEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=True)
 
     # Entrenar y probar en CartPole-v1
-    # train_and_test_env("CartPole-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0]))
+    # train_and_test_env("CartPole-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=True)
 
     # Entrenar y probar en Acrobot-v1
-    train_and_test_env("Acrobot-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+    # train_and_test_env("Acrobot-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=True )
 
     #compare_and_plot("CartPole-v1", episodes=500, batch_size=10, seeds=(0,1,2,3,4))
     # compare_and_plot("Acrobot-v1", episodes=500, batch_size=10, seeds=[0, 1, 2])
