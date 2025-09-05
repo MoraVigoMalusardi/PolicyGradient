@@ -48,3 +48,32 @@ En este entorno hay 4 estados consecutivos.
 - Duración: hasta alcanzar el objetivo ([[0,0,0,1]]).
 - Reward: -1 por paso.
 
+### Entornos de Gymnasium
+
+#### 5. CartPole-v1
+- Obs: 4 variables continuas:
+    - 0: Cart Position (position at x)
+    - 1: Cart Velocity
+    - 2: Pole Angle
+    - 3: Pole Angular Velocity
+- Acciones: 2 (0=izquierda, 1=derecha).
+- Duración: El episodio termina si se cumple alguna de las siguientes condiciones:
+    - Termination: Pole Angle es mayor a ±12°
+    - Termination: Cart Position es mayor a ±2.4 (el centro del carrito llega al borde de la pantalla)
+    - Truncation: La longitud del episodio es mayor a 500 
+- Reward: +1 por paso.
+
+#### 6. Acrobot-v1
+- Obs: 6 variables continuas:
+    - 0: Cosine of $\theta_1$
+    - 1: Sine of $\theta_1$
+    - 2: Cosine of $\theta_2$
+    - 3: Sine of $\theta_2$
+    - 4: Angular velocity of $\theta_1$
+    - 5: Angular velocity of $\theta_2$
+- Acciones: 3 (0=torque -1, 1=torque 0, 2=torque +1).
+- Duración: El episodio termina si se cumple alguna de las siguientes condiciones:
+    - Termination: El brazo alcanza la altura objetivo, que es: -cos($\theta_1$) - cos($\theta_2$ + $\theta_1$) > 1.0
+    - Truncation: La longitud del episodio es mayor a 500
+- Reward: -1 por paso, llegar al estado terminal: 0.
+
