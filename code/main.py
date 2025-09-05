@@ -184,7 +184,7 @@ def compare_and_plot(env_name, episodes=500, batch_size=10, seeds=(0,1,2,3,4)):
 
 if __name__ == "__main__":
     # Entrenar y probar en TwoAZeroObsOneStepEnv
-    # train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]), batch_size=10, early_stop=False)
+    train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]), batch_size=10, early_stop=False)
 
     # Entrenar y probar en TwoARandomObsOneStepEnv
     # train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]), batch_size=10, early_stop=False)
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     # train_and_test_env("CartPole-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
     # Entrenar y probar en Acrobot-v1
-    train_and_test_env("Acrobot-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
+    # train_and_test_env("Acrobot-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
     #compare_and_plot("CartPole-v1", episodes=500, batch_size=10, seeds=(0,1,2,3,4))
     # compare_and_plot("Acrobot-v1", episodes=500, batch_size=10, seeds=[0, 1, 2])

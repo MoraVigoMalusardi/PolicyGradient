@@ -79,11 +79,11 @@ def evaluate_policy_mean(env_name, episodes: int = 200, policy_fn = random_polic
     """Promedia el retorno no descontado de una politica dada."""
     env = envs[env_name]()
     rets = []
-    for _ in range(episodes):
-        try:
+    try:
+        for _ in range(episodes):
             rets.append(calculate_return(env, policy_fn))
-        finally:
-            env.close()
+    finally:
+        env.close()
     return float(np.mean(rets))
 
 
