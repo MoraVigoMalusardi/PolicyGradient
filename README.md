@@ -105,6 +105,7 @@ Se implementa el algoritmo REINFORCE basandose en el capítulo 13.3 del libro de
 
 - ##### Criterios de convergencia para Early Stop:
 Use diferentes criterios segun el entorno:
+
     - TwoAZeroObsOneStep (1 paso)
         - metric= "avg_return", threshold=0.99, window=50, mode="ge"
         - Justificacion: el pptimo es +1 de manera determinista; pedir ≥0.99 asegura que casi siempre se elige la accion correcta.
