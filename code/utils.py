@@ -29,7 +29,7 @@ def plot_loss_curve(train_losses, environment_name: str):
     plt.plot(train_losses)
     plt.xlabel("Episodio")
     plt.ylabel("Perdida")
-    plt.title(f"Perdida por ep. -{environment_name}- Early Stop")
+    plt.title(f"Perdida por ep. -{environment_name}")
     plt.savefig(f"plots/losses/loss_curve_{environment_name}.png")
     plt.close()
 
@@ -55,7 +55,7 @@ def plot_rewards(rewards_per_episode, environment_name: str, avg_random: float =
         plt.axhline(y=avg_random, color="red", linestyle="--", label="Agente aleatorio")
     plt.xlabel("Episodio")
     plt.ylabel("Recompensa")
-    plt.title(f"Recompensa promedio por episodio en {environment_name} - Early Stop")
+    plt.title(f"Recompensa promedio por episodio en {environment_name}")
     plt.legend()
     plt.savefig(f"plots/rewards/rewards_{environment_name}.png")
     plt.close()

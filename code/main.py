@@ -38,12 +38,18 @@ def train_and_test_env(environment_name: str,
     action_dim = env.action_space.n
 
     gamma = 0.99 
-    lr_policy = 0.01 
-    lr_value = 3e-3
 
     # Redes
-    policy_net = build_mlp([state_dim, 32, action_dim])
-    value_net = build_mlp([state_dim, 16, 1])                     # la salida es un escalar (valor del estado)
+    if environment_name in ["TwoAZeroObsOneStep", "TwoARandomObsOneStepEnv", "LineWorldEasyEnv", "LineWorldMirrorEnv"]:
+        policy_net = build_mlp([state_dim, 32, action_dim])
+        value_net = build_mlp([state_dim, 16, 1])                      # la salida es un escalar (valor del estado)
+        lr_policy = 0.01 
+        lr_value = 3e-3
+    else:  # Entornos de Gym
+        policy_net = build_mlp([state_dim, 64, action_dim])
+        value_net = build_mlp([state_dim, 64, 1])                      # la salida es un escalar (valor del estado)
+        lr_policy = 3e-3
+        lr_value = 3e-3
 
     policy_optimizer = optim.Adam(policy_net.parameters(), lr=lr_policy)
     value_opt = optim.Adam(value_net.parameters(), lr=lr_value)
@@ -166,6 +172,7 @@ def compare_and_plot(env_name, episodes=500, batch_size=10, seeds=(0,1,2,3,4)):
 
     with_base, no_base = [], []
     for s in seeds:
+        print(f"Running seed {s}...")
         with_base.append(run_once(env_ctor, env_name, episodes, batch_size, True,  s))
         no_base.append(run_once(env_ctor, env_name, episodes, batch_size, False, s))
 
@@ -184,26 +191,32 @@ def compare_and_plot(env_name, episodes=500, batch_size=10, seeds=(0,1,2,3,4)):
 
 if __name__ == "__main__":
     # Entrenar y probar en TwoAZeroObsOneStepEnv
-    train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]), batch_size=10, early_stop=False)
+    #print("TwoAZeroObsOneStepEnv")
+    #train_and_test_env("TwoAZeroObsOneStep", episodes=150, obs=np.array([0.0]), batch_size=10, early_stop=False)
 
+    #print("TwoARandomObsOneStepEnv")
     # Entrenar y probar en TwoARandomObsOneStepEnv
-    # train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]), batch_size=10, early_stop=False)
+    #train_and_test_env("TwoARandomObsOneStepEnv", episodes=150, obs=np.array([1.0, 0.0]), batch_size=10, early_stop=False)
 
+    #print("LineWorldEasyEnv")
     # Entrenar y probar en LineWorldEasyEnv
-    # train_and_test_env("LineWorldEasyEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
+    #train_and_test_env("LineWorldEasyEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
+    #print("LineWorldMirrorEnv")
     # Entrenar y probar en LineWorldMirrorEnv
-    # train_and_test_env("LineWorldMirrorEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
+    #train_and_test_env("LineWorldMirrorEnv", episodes=150, obs=np.array([1.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
+    #print("CartPole-v1")
     # Entrenar y probar en CartPole-v1
-    # train_and_test_env("CartPole-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
+    #train_and_test_env("CartPole-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
+    # print("Acrobot-v1")
     # Entrenar y probar en Acrobot-v1
-    # train_and_test_env("Acrobot-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
+    #  train_and_test_env("Acrobot-v1", episodes=500, obs=np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), batch_size=10, early_stop=False)
 
-    #compare_and_plot("CartPole-v1", episodes=500, batch_size=10, seeds=(0,1,2,3,4))
+    compare_and_plot("CartPole-v1", episodes=500, batch_size=10, seeds=(0,1,2))
     # compare_and_plot("Acrobot-v1", episodes=500, batch_size=10, seeds=[0, 1, 2])
     
     #compare_base_and_no_base("CartPole-v1", episodes=500, batch_size=10)
-    #compare_base_and_no_base("Acrobot-v1", episodes=500, batch_size=10)
+    # compare_base_and_no_base("Acrobot-v1", episodes=500, batch_size=10)
 
